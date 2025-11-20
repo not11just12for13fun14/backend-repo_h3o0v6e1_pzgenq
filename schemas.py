@@ -1,43 +1,45 @@
 """
-Database Schemas for Food Delivery App
+Database Schemas for Chatjob (UK-based chatting platform)
 
 Each Pydantic model represents a collection in your database.
 Model name is converted to lowercase for the collection name:
-- Restaurant -> "restaurant"
-- MenuItem -> "menuitem"
-- Order -> "order"
+- User -> "user"
+- Chat -> "chat"
+- Message -> "message"
+- Payment -> "payment"
+
+Currency: All monetary values are stored in euros (EUR).
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 
-class Restaurant(BaseModel):
-    name: str = Field(..., description="Restaurant name")
-    cuisine: str = Field(..., description="Cuisine type")
-    rating: float = Field(4.5, ge=0, le=5, description="Average rating")
-    image_url: Optional[str] = Field(None, description="Hero image URL")
-    delivery_time_min: int = Field(25, ge=5, le=120, description="Estimated minutes for delivery")
-    delivery_fee: float = Field(2.99, ge=0, description="Delivery fee in dollars")
+class User(BaseModel):
+    name: str = Field(..., description="Display name")
+    role: str = Field(..., description="creator or customer", pattern="^(creator|customer)$")
+    rate_eur_per_min: Optional[float] = Field(None, ge=0, description="For creators: rate per minute in EUR")
+    wallet_eur: float = Field(0.0, ge=0, description="User wallet balance in EUR")
+    bio: Optional[str] = Field(None, description="Short bio for creators")
+    avatar_url: Optional[str] = Field(None, description="Avatar image URL")
 
-class MenuItem(BaseModel):
-    restaurant_id: str = Field(..., description="Restaurant ID this item belongs to")
-    name: str = Field(..., description="Dish name")
-    description: Optional[str] = Field(None, description="Dish description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    image_url: Optional[str] = Field(None, description="Image URL for the item")
-    is_popular: bool = Field(False, description="Whether this is a popular item")
+class Chat(BaseModel):
+    creator_id: str = Field(...)
+    customer_id: str = Field(...)
+    status: str = Field("active", description="active or ended")
+    rate_eur_per_min: float = Field(..., ge=0)
+    started_at: Optional[str] = Field(None, description="ISO timestamp when chat started")
+    ended_at: Optional[str] = Field(None, description="ISO timestamp when chat ended")
+    total_minutes: Optional[int] = Field(None, ge=0)
+    total_cost_eur: Optional[float] = Field(None, ge=0)
 
-class OrderItem(BaseModel):
-    menu_item_id: str
-    restaurant_id: str
-    name: str
-    price: float
-    quantity: int = Field(1, ge=1)
+class Message(BaseModel):
+    chat_id: str
+    sender_id: str
+    content: str
+    sent_at: Optional[str] = Field(None, description="ISO timestamp when message sent")
 
-class Order(BaseModel):
-    user_name: str
-    address: str
-    items: List[OrderItem]
-    total: float = Field(..., ge=0)
-    status: str = Field("placed", description="placed, confirmed, preparing, on_the_way, delivered")
-    payment_method: str = Field("cod", description="cod, card, wallet")
+class Payment(BaseModel):
+    user_id: str
+    kind: str = Field(..., description="topup or settlement", pattern="^(topup|settlement)$")
+    amount_eur: float = Field(..., description="Positive for credit to user, negative for debit")
+    chat_id: Optional[str] = Field(None, description="Associated chat if settlement")
